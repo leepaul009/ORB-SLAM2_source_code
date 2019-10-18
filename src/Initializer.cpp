@@ -60,7 +60,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
     // Frame2 特征点
     mvKeys2 = CurrentFrame.mvKeysUn;
 
-    // mvMatches12记录匹配上的特征点对
+    // mvMatches12记录匹配上的特征点对, format: vector<pair>
     mvMatches12.clear();
     mvMatches12.reserve(mvKeys2.size());
     // mvbMatched1记录每个特征点是否有匹配的特征点，

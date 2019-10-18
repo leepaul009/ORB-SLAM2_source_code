@@ -45,8 +45,9 @@ void KeyFrameDatabase::add(KeyFrame *pKF)
     unique_lock<mutex> lock(mMutex);
 
     // 为每一个word添加该KeyFrame
+    // BowVector => map<WordId, WordValue>
     for(DBoW2::BowVector::const_iterator vit= pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit!=vend; vit++)
-        mvInvertedFile[vit->first].push_back(pKF);
+        mvInvertedFile[vit->first].push_back(pKF); // vit->first => word_id
 }
 
 /**
@@ -261,6 +262,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
                     pKFi->mnRelocQuery=F->mnId;
                     lKFsSharingWords.push_back(pKFi);
                 }
+                // mnRelocWords indicate how many words corresponding to this frame (inside  invertedFile)
                 pKFi->mnRelocWords++;
             }
         }
@@ -273,7 +275,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     int maxCommonWords=0;
     for(list<KeyFrame*>::iterator lit=lKFsSharingWords.begin(), lend= lKFsSharingWords.end(); lit!=lend; lit++)
     {
-        if((*lit)->mnRelocWords>maxCommonWords)
+        if((*lit)->mnRelocWords > maxCommonWords)
             maxCommonWords=(*lit)->mnRelocWords;
     }
 
@@ -324,14 +326,14 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
                 continue;
 
             accScore+=pKF2->mRelocScore;// 只有pKF2也在闭环候选帧中，才能贡献分数
-            if(pKF2->mRelocScore>bestScore)// 统计得到组里分数最高的KeyFrame
+            if(pKF2->mRelocScore > bestScore)// 统计得到组里分数最高的KeyFrame
             {
                 pBestKF=pKF2;
                 bestScore = pKF2->mRelocScore;
             }
 
         }
-        lAccScoreAndMatch.push_back(make_pair(accScore,pBestKF));
+        lAccScoreAndMatch.push_back(make_pair(accScore, pBestKF));
         if(accScore>bestAccScore) // 记录所有组中组得分最高的组
             bestAccScore=accScore; // 得到所有组中最高的累计得分
     }

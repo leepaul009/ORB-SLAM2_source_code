@@ -298,6 +298,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     }
 
     // 步骤2：构造Frame
+    //# both mK and mDistCoef are camera setting
     if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)// 没有成功初始化的前一个状态就是NO_IMAGES_YET
         mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
     else
@@ -348,9 +349,7 @@ void Tracking::Track()
     else// 步骤2：跟踪
     {
         // System is initialized. Track Frame.
-
-        // bOK为临时变量，用于表示每个函数是否执行成功
-        bool bOK;
+        bool bOK; // bOK为临时变量，用于表示每个函数是否执行成功
 
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
         // 在viewer中有个开关menuLocalizationMode，有它控制是否ActivateLocalizationMode，并最终管控mbOnlyTracking
@@ -766,7 +765,8 @@ void Tracking::MonocularInitialization()
         // mvbPrevMatched为前一帧的特征点，存储了mInitialFrame中哪些点将进行接下来的匹配
         // mvIniMatches存储mInitialFrame,mCurrentFrame之间匹配的特征点
         ORBmatcher matcher(0.9,true);
-        int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
+        int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame,
+                                                       mvbPrevMatched, mvIniMatches, 100);
 
         // Check if there are enough correspondences
         // 步骤4：如果初始化的两帧之间的匹配点太少，重新初始化
@@ -782,7 +782,8 @@ void Tracking::MonocularInitialization()
         vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
 
         // 步骤5：通过H模型或F模型进行单目初始化，得到两帧间相对运动、初始MapPoints
-        if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
+        if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches,
+                                     Rcw, tcw, mvIniP3D, vbTriangulated))
         {
             // 步骤6：删除那些无法进行三角化的匹配点
             for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)

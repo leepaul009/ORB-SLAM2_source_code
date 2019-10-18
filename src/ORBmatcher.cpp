@@ -471,12 +471,16 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapP
     return nmatches;
 }
 
-int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f> &vbPrevMatched, vector<int> &vnMatches12, int windowSize)
+int ORBmatcher::SearchForInitialization(Frame &F1, // init frame
+                                        Frame &F2, // cur frame
+                                        vector<cv::Point2f> &vbPrevMatched,
+                                        vector<int> &vnMatches12,
+                                        int windowSize)
 {
     int nmatches=0;
     vnMatches12 = vector<int>(F1.mvKeysUn.size(),-1);
 
-    vector<int> rotHist[HISTO_LENGTH];
+    vector<int> rotHist[HISTO_LENGTH]; // length=30
     for(int i=0;i<HISTO_LENGTH;i++)
         rotHist[i].reserve(500);
     const float factor = HISTO_LENGTH/360.0f;
@@ -491,8 +495,12 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
         if(level1>0)
             continue;
 
-        vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[i1].x,vbPrevMatched[i1].y, windowSize,level1,level1);
-
+        // vIndices indicates a collection of KP index match expectation
+        // vbPrevMatched: match init Frame => cur Frame
+        vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[i1].x,
+                                                        vbPrevMatched[i1].y,
+                                                        windowSize,
+                                                        level1,level1);
         if(vIndices2.empty())
             continue;
 
@@ -502,6 +510,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
         int bestDist2 = INT_MAX;
         int bestIdx2 = -1;
 
+        // find a KP of cur frame that match init frame (shortest dist)
         for(vector<size_t>::iterator vit=vIndices2.begin(); vit!=vIndices2.end(); vit++)
         {
             size_t i2 = *vit;
@@ -530,6 +539,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
         {
             if(bestDist<(float)bestDist2*mfNNratio)
             {
+                // indicates vMatchedDistance[i2] worse than bstDist, thus prev match is worse
                 if(vnMatches21[bestIdx2]>=0)
                 {
                     vnMatches12[vnMatches21[bestIdx2]]=-1;
@@ -566,6 +576,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
 
         for(int i=0; i<HISTO_LENGTH; i++)
         {
+            // keep matches with 3 max in histogram
             if(i==ind1 || i==ind2 || i==ind3)
                 continue;
             for(size_t j=0, jend=rotHist[i].size(); j<jend; j++)

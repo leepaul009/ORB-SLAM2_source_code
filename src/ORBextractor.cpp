@@ -420,7 +420,7 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
     mvLevelSigma2[0]=1.0f;
     for(int i=1; i<nlevels; i++)
     {
-        mvScaleFactor[i]=mvScaleFactor[i-1]*scaleFactor;
+        mvScaleFactor[i]=mvScaleFactor[i-1]*scaleFactor; // 计算各层金字塔图像缩放因子，这里大于1
         mvLevelSigma2[i]=mvScaleFactor[i]*mvScaleFactor[i];
     }
 
@@ -435,13 +435,13 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
     mvImagePyramid.resize(nlevels);
 
     mnFeaturesPerLevel.resize(nlevels);
-    float factor = 1.0f / scaleFactor;
+    float factor = 1.0f / scaleFactor; // // 金字塔图像越小，目标关键点数量越少，第二层图像中关键点数目是第一次的factor倍，以此类对
     float nDesiredFeaturesPerScale = nfeatures*(1 - factor)/(1 - (float)pow((double)factor, (double)nlevels));
 
     int sumFeatures = 0;
     for( int level = 0; level < nlevels-1; level++ )
     {
-        mnFeaturesPerLevel[level] = cvRound(nDesiredFeaturesPerScale);
+        mnFeaturesPerLevel[level] = cvRound(nDesiredFeaturesPerScale); // 保存每一层图像中的目标关键点数量
         sumFeatures += mnFeaturesPerLevel[level];
         nDesiredFeaturesPerScale *= factor;
     }
@@ -449,6 +449,7 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
 
     const int npoints = 512;
     const Point* pattern0 = (const Point*)bit_pattern_31_;
+    // 源代码中这里保存的就是论文《ORB an efficient alternative to SIFT or SURF》中计算得到的匹配对的x/y坐标，一共256对
     std::copy(pattern0, pattern0 + npoints, std::back_inserter(pattern));
 
     //This is for orientation
@@ -468,7 +469,7 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
             ++v0;
         umax[v] = v0;
         ++v0;
-    }
+    } // 这部分是计算一个圆形中y坐标对应的x坐标范围，作者使用一些方法保证取值是对称的
 }
 
 static void computeOrientation(const Mat& image, vector<KeyPoint>& keypoints, const vector<int>& umax)
@@ -778,17 +779,18 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
     // 对每一层图像做处理
     for (int level = 0; level < nlevels; ++level)
     {
-        const int minBorderX = EDGE_THRESHOLD-3;
+        const int minBorderX = EDGE_THRESHOLD-3; // 19-3=16
         const int minBorderY = minBorderX;
         const int maxBorderX = mvImagePyramid[level].cols-EDGE_THRESHOLD+3;
         const int maxBorderY = mvImagePyramid[level].rows-EDGE_THRESHOLD+3;
 
         vector<cv::KeyPoint> vToDistributeKeys;
-        vToDistributeKeys.reserve(nfeatures*10);
+        vToDistributeKeys.reserve(nfeatures*10); // nfeat=1000
 
         const float width = (maxBorderX-minBorderX);
         const float height = (maxBorderY-minBorderY);
 
+        // split img as 30x30 pixel block
         const int nCols = width/W;
         const int nRows = height/W;
         const int wCell = ceil(width/nCols);
@@ -841,6 +843,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
         keypoints.reserve(nfeatures);
 
         // 根据mnFeaturesPerLevel,即该层的兴趣点数,对特征点进行剔除
+        // 选取特征点 评分较高（质量较好）且分布尽量均匀
         keypoints = DistributeOctTree(vToDistributeKeys, minBorderX, maxBorderX,
                                       minBorderY, maxBorderY,mnFeaturesPerLevel[level], level);
 
@@ -1063,7 +1066,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
     // 构建图像金字塔
     ComputePyramid(image);
 
-    // 计算每层图像的兴趣点
+    // 计算每层图像的兴趣点 计算关键点
     vector < vector<KeyPoint> > allKeypoints; // vector<vector<KeyPoint>>
     ComputeKeyPointsOctTree(allKeypoints);
     //ComputeKeyPointsOld(allKeypoints);
@@ -1109,7 +1112,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
             float scale = mvScaleFactor[level]; //getScale(level, firstLevel, scaleFactor);
             for (vector<KeyPoint>::iterator keypoint = keypoints.begin(),
                  keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
-                keypoint->pt *= scale;
+                keypoint->pt *= scale; // 根据金字塔图像缩放比例恢复关键点在原始图像中的位置
         }
         // And add the keypoints to the output
         _keypoints.insert(_keypoints.end(), keypoints.begin(), keypoints.end());

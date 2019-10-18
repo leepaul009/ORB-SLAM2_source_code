@@ -34,7 +34,9 @@ bool has_suffix(const std::string &str, const std::string &suffix) {
 namespace ORB_SLAM2
 {
 
-System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
+System::System(const string &strVocFile, // OrbVoc file
+               const string &strSettingsFile,
+               const eSensor sensor,
                const bool bUseViewer):mSensor(sensor),mbReset(false),mbActivateLocalizationMode(false),
                mbDeactivateLocalizationMode(false)
 {
@@ -69,11 +71,11 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpVocabulary = new ORBVocabulary();
     bool bVocLoad = false; // chose loading method based on file extension
     if (has_suffix(strVocFile, ".txt"))
-	  bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
-	else if(has_suffix(strVocFile, ".bin"))
-	  bVocLoad = mpVocabulary->loadFromBinaryFile(strVocFile);
-	else
-	  bVocLoad = false;
+      bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
+    else if(has_suffix(strVocFile, ".bin"))
+      bVocLoad = mpVocabulary->loadFromBinaryFile(strVocFile);
+    else
+      bVocLoad = false;
     if(!bVocLoad)
     {
         cerr << "Wrong path to vocabulary. " << endl;

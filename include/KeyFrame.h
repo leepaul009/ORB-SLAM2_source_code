@@ -156,7 +156,7 @@ public:
     long unsigned int mnLoopQuery;
     int mnLoopWords;
     float mLoopScore;
-    long unsigned int mnRelocQuery;
+    long unsigned int mnRelocQuery; // current input frame id that indicate if chosen as a candidate
     int mnRelocWords;
     float mRelocScore;
 
