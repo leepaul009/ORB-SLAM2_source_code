@@ -41,7 +41,9 @@ namespace ORB_SLAM2
 // 这个全局BA优化在本程序中有两个地方使用：
 // a.单目初始化：CreateInitialMapMonocular函数
 // b.闭环优化：RunGlobalBundleAdjustment函数
-void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations,
+                                       bool* pbStopFlag, const unsigned long nLoopKF,
+                                       const bool bRobust)
 {
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
@@ -69,8 +71,10 @@ void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopF
  *          nLoopKF  关键帧的个数
  *          bRobust  是否使用核函数
  */
-void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
-                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs,
+                                 const vector<MapPoint *> &vpMP,
+                                 int nIterations, bool* pbStopFlag,
+                                 const unsigned long nLoopKF, const bool bRobust)
 {
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
@@ -236,7 +240,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         else
         {
             pKF->mTcwGBA.create(4,4,CV_32F);
-            Converter::toCvMat(SE3quat).copyTo(pKF->mTcwGBA);
+            Converter::toCvMat(SE3quat).copyTo(pKF->mTcwGBA); // update keyframe
             pKF->mnBAGlobalForKF = nLoopKF;
         }
     }

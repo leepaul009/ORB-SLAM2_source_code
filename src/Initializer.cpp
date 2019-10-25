@@ -52,7 +52,8 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 /**
  * @brief 并行地计算基础矩阵和单应性矩阵，选取其中一个模型，恢复出最开始两帧之间的相对姿态以及点云
  */
-bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12, cv::Mat &R21, cv::Mat &t21,
+bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12,
+                             cv::Mat &R21, cv::Mat &t21,
                              vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
 {
     // Fill structures with current keypoints and matches with reference frame
@@ -166,7 +167,7 @@ void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, c
     // 将mvKeys1和mvKey2归一化到均值为0，一阶绝对矩为1，归一化矩阵分别为T1、T2
     vector<cv::Point2f> vPn1, vPn2;
     cv::Mat T1, T2;
-    Normalize(mvKeys1,vPn1, T1);
+    Normalize(mvKeys1,vPn1, T1); // input_norm = T * input, where matrix T indicates norm process
     Normalize(mvKeys2,vPn2, T2);
     cv::Mat T2inv = T2.inv();
 
@@ -368,13 +369,17 @@ cv::Mat Initializer::ComputeF21(const vector<cv::Point2f> &vP1,const vector<cv::
 
     cv::Mat u,w,vt;
 
+    //A=u*w*vt
     cv::SVDecomp(A,w,u,vt,cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
 
     cv::Mat Fpre = vt.row(8).reshape(0, 3); // v的最后一列
 
     cv::SVDecomp(Fpre,w,u,vt,cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
 
-    w.at<float>(2)=0; // 秩2约束，将第3个奇异值设为0
+    // F found by solving the set of linear equations (Af = 0) will not in general have rank 2,
+    // and we should take steps to enforce the constraint.
+    // 秩2约束，将第3个奇异值设为0
+    w.at<float>(2)=0;
 
     return  u*cv::Mat::diag(w)*vt;
 }
@@ -387,7 +392,10 @@ cv::Mat Initializer::ComputeF21(const vector<cv::Point2f> &vP1,const vector<cv::
  * - Multiple View Geometry in Computer Vision - symmetric transfer errors: 4.2.2 Geometric distance
  * - Multiple View Geometry in Computer Vision - model selection 4.7.1 RANSAC
  */
-float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vector<bool> &vbMatchesInliers, float sigma)
+float Initializer::CheckHomography(const cv::Mat &H21,
+                                   const cv::Mat &H12,
+                                   vector<bool> &vbMatchesInliers,
+                                   float sigma)
 {   
     const int N = mvMatches12.size();
 
@@ -447,8 +455,8 @@ float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vecto
         // |v1| = |h21inv h22inv h23inv||v2|
         // |1 |   |h31inv h32inv h33inv||1 |
         const float w2in1inv = 1.0/(h31inv*u2+h32inv*v2+h33inv);
-        const float u2in1 = (h11inv*u2+h12inv*v2+h13inv)*w2in1inv;
-        const float v2in1 = (h21inv*u2+h22inv*v2+h23inv)*w2in1inv;
+        const float u2in1 = (h11inv*u2 + h12inv*v2 + h13inv)*w2in1inv;
+        const float v2in1 = (h21inv*u2 + h22inv*v2 + h23inv)*w2in1inv;
 
         // 计算重投影误差
         const float squareDist1 = (u1-u2in1)*(u1-u2in1)+(v1-v2in1)*(v1-v2in1);
@@ -531,8 +539,11 @@ float Initializer::CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesI
         const float v2 = kp2.pt.y;
 
         // Reprojection error in second image
-        // l2=F21x1=(a2,b2,c2)
-        // F21x1可以算出x1在图像中x2对应的线l
+        // l2=F21*x1=(a2,b2,c2)
+        // F21*x1可以算出x1在图像中x2对应的线l
+        // |a2|   |f11 f12 f13||u1|
+        // |b2| = |f21 f22 f23||v1|
+        // |c2|   |f31 f32 f33||1 |
         const float a2 = f11*u1+f12*v1+f13;
         const float b2 = f21*u1+f22*v1+f23;
         const float c2 = f31*u1+f32*v1+f33;
@@ -593,8 +604,12 @@ float Initializer::CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesI
  * 
  * @see Multiple View Geometry in Computer Vision - Result 9.19 p259
  */
-bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv::Mat &K,
-                            cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated)
+bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers,
+                               cv::Mat &F21, cv::Mat &K,
+                               cv::Mat &R21, cv::Mat &t21,
+                               vector<cv::Point3f> &vP3D,
+                               vector<bool> &vbTriangulated,
+                               float minParallax, int minTriangulated)
 {
     int N=0;
     for(size_t i=0, iend = vbMatchesInliers.size() ; i<iend; i++)
@@ -712,7 +727,8 @@ bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv:
  * - Deeper understanding of the homography decomposition for vision-based control
  */
 bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv::Mat &K,
-                      cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated)
+                               cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D,
+                               vector<bool> &vbTriangulated, float minParallax, int minTriangulated)
 {
     int N=0;
     for(size_t i=0, iend = vbMatchesInliers.size() ; i<iend; i++)
@@ -859,7 +875,8 @@ bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv:
     vector<cv::Point3f> bestP3D;
     vector<bool> bestTriangulated;
 
-    // Instead of applying the visibility constraints proposed in the Faugeras' paper (which could fail for points seen with low parallax)
+    // Instead of applying the visibility constraints proposed in the Faugeras' paper
+    // (which could fail for points seen with low parallax)
     // We reconstruct all hypotheses and check in terms of triangulated points and parallax
     // d'=d2和d'=-d2分别对应8组(R t)
     for(size_t i=0; i<8; i++)
@@ -867,7 +884,10 @@ bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv:
         float parallaxi;
         vector<cv::Point3f> vP3Di;
         vector<bool> vbTriangulatedi;
-        int nGood = CheckRT(vR[i],vt[i],mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
+        int nGood = CheckRT(vR[i],vt[i],
+                            mvKeys1,mvKeys2,
+                            mvMatches12,vbMatchesInliers,K,vP3Di,
+                            4.0*mSigma2, vbTriangulatedi, parallaxi);
 
         // 保留最优的和次优的
         if(nGood>bestGood)
@@ -886,7 +906,8 @@ bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv:
     }
 
 
-    if(secondBestGood<0.75*bestGood && bestParallax>=minParallax && bestGood>minTriangulated && bestGood>0.9*N)
+    if(secondBestGood<0.75*bestGood && bestParallax>=minParallax
+       && bestGood>minTriangulated && bestGood>0.9*N)
     {
         vR[bestSolutionIdx].copyTo(R21);
         vt[bestSolutionIdx].copyTo(t21);
@@ -932,7 +953,10 @@ bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv:
  * @param x3D 三维点
  * @see       Multiple View Geometry in Computer Vision - 12.2 Linear triangulation methods p312
  */
-void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &P1, const cv::Mat &P2, cv::Mat &x3D)
+void Initializer::Triangulate(const cv::KeyPoint &kp1,
+                              const cv::KeyPoint &kp2,
+                              const cv::Mat &P1,
+                              const cv::Mat &P2, cv::Mat &x3D)
 {
     // 在DecomposeE函数和ReconstructH函数中对t有归一化
     // 这里三角化过程中恢复的3D点深度取决于 t 的尺度，
@@ -941,10 +965,10 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
 
     cv::Mat A(4,4,CV_32F);
 
-    A.row(0) = kp1.pt.x*P1.row(2)-P1.row(0);
-    A.row(1) = kp1.pt.y*P1.row(2)-P1.row(1);
-    A.row(2) = kp2.pt.x*P2.row(2)-P2.row(0);
-    A.row(3) = kp2.pt.y*P2.row(2)-P2.row(1);
+    A.row(0) = kp1.pt.x * P1.row(2) - P1.row(0);
+    A.row(1) = kp1.pt.y * P1.row(2) - P1.row(1);
+    A.row(2) = kp2.pt.x * P2.row(2) - P2.row(0);
+    A.row(3) = kp2.pt.y * P2.row(2) - P2.row(1);
 
     cv::Mat u,w,vt;
     cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
@@ -962,7 +986,9 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
  * @param vNormalizedPoints 特征点归一化后的坐标
  * @param T                 将特征点归一化的矩阵
  */
-void Initializer::Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2f> &vNormalizedPoints, cv::Mat &T)
+void Initializer::Normalize(const vector<cv::KeyPoint> &vKeys,
+                            vector<cv::Point2f> &vNormalizedPoints,
+                            cv::Mat &T)
 {
     float meanX = 0;
     float meanY = 0;
@@ -1018,9 +1044,11 @@ void Initializer::Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2
 /**
  * @brief 进行cheirality check，从而进一步找出F分解后最合适的解
  */
-int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
-                       const vector<Match> &vMatches12, vector<bool> &vbMatchesInliers,
-                       const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax)
+int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t,
+                         const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
+                         const vector<Match> &vMatches12, vector<bool> &vbMatchesInliers,
+                         const cv::Mat &K, vector<cv::Point3f> &vP3D,
+                         float th2, vector<bool> &vbGood, float &parallax)
 {
     // Calibration parameters
     const float fx = K.at<float>(0,0);

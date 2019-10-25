@@ -333,11 +333,11 @@ void MapPoint::ComputeDistinctiveDescriptors()
     // Compute distances between them
     // 获得这些描述子两两之间的距离
     const size_t N = vDescriptors.size();
-	
+
     //float Distances[N][N];
-	std::vector<std::vector<float> > Distances;
-	Distances.resize(N, vector<float>(N, 0));
-	for (size_t i = 0; i<N; i++)
+    std::vector<std::vector<float> > Distances;
+    Distances.resize(N, vector<float>(N, 0));
+    for (size_t i = 0; i<N; i++)
     {
         Distances[i][i]=0;
         for(size_t j=i+1;j<N;j++)
@@ -355,8 +355,8 @@ void MapPoint::ComputeDistinctiveDescriptors()
     {
         // 第i个描述子到其它所有所有描述子之间的距离
         //vector<int> vDists(Distances[i],Distances[i]+N);
-		vector<int> vDists(Distances[i].begin(), Distances[i].end());
-		sort(vDists.begin(), vDists.end());
+        vector<int> vDists(Distances[i].begin(), Distances[i].end());
+        sort(vDists.begin(), vDists.end());
 
         // 获得中值
         int median = vDists[0.5*(N-1)];
