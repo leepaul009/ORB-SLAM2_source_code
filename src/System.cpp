@@ -239,10 +239,10 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
 
-            mpTracker->InformOnlyTracking(true);// 定位时，只跟踪
+            mpTracker->InformOnlyTracking(true);// 定位时，只跟踪, mbOnlyTracking = true
             mbActivateLocalizationMode = false;// 防止重复执行
         }
-        if(mbDeactivateLocalizationMode)
+        if(mbDeactivateLocalizationMode) // 正常VO模式（有地图更新）
         {
             mpTracker->InformOnlyTracking(false);
             mpLocalMapper->Release();

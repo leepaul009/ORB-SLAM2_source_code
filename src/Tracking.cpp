@@ -53,10 +53,21 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
-    mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
-    mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
+Tracking::Tracking(System *pSys,
+                   ORBVocabulary* pVoc,
+                   FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer,
+                   Map *pMap,
+                   KeyFrameDatabase* pKFDB,
+                   const string &strSettingPath,
+                   const int sensor):
+    mState(NO_IMAGES_YET), mSensor(sensor),
+    mbOnlyTracking(false), mbVO(false),
+    mpORBVocabulary(pVoc),
+    mpKeyFrameDB(pKFDB),
+    mpInitializer(static_cast<Initializer*>(NULL)),
+    mpSystem(pSys), mpViewer(NULL),
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer),
+    mpMap(pMap), mnLastRelocFrameId(0)
 {
     // Load camera parameters from settings file
 
@@ -373,7 +384,7 @@ void Tracking::Track()
                 // mCurrentFrame.mnId<mnLastRelocFrameId+2这个判断不应该有
                 // 应该只要mVelocity不为空，就优先选择TrackWithMotionModel
                 // mnLastRelocFrameId上一次重定位的那一帧
-                if(mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
+                if(mVelocity.empty() || mCurrentFrame.mnId < mnLastRelocFrameId + 2)
                 {
                     // 将上一帧的位姿作为当前帧的初始位姿
                     // 通过BoW的方式在参考帧中找当前帧特征点的匹配点
@@ -387,9 +398,11 @@ void Tracking::Track()
                     // 优化每个特征点所对应3D点的投影误差即可得到位姿
                     bOK = TrackWithMotionModel();
                     if(!bOK)
+                    {
                         // TrackReferenceKeyFrame是跟踪参考帧，不能根据固定运动速度模型预测当前帧的位姿态，通过bow加速匹配（SearchByBow）
                         // 最后通过优化得到优化后的位姿
                         bOK = TrackReferenceKeyFrame();
+                    }
                 }
             }
             else
@@ -545,7 +558,7 @@ void Tracking::Track()
                 MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
                 if(pMP)
                     // 排除UpdateLastFrame函数中为了跟踪增加的MapPoints
-                    if(pMP->Observations()<1)
+                    if(pMP->Observations() < 1)
                     {
                         mCurrentFrame.mvbOutlier[i] = false;
                         mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
@@ -1218,6 +1231,7 @@ bool Tracking::TrackLocalMap()
     UpdateLocalMap();
 
     // 步骤2：在局部地图中查找与当前帧匹配的MapPoints
+    // it will provide additional MPs for KPs of cur Frame
     SearchLocalPoints();
 
     // Optimize Pose
@@ -1239,7 +1253,7 @@ bool Tracking::TrackLocalMap()
                 if(!mbOnlyTracking)
                 {
                     // 该MapPoint被其它关键帧观测到过
-                    if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
+                    if(mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
                         mnMatchesInliers++;
                 }
                 else
@@ -1255,10 +1269,10 @@ bool Tracking::TrackLocalMap()
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
     // 步骤4：决定是否跟踪成功
-    if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
+    if(mCurrentFrame.mnId < mnLastRelocFrameId+mMaxFrames && mnMatchesInliers < 50)
         return false;
 
-    if(mnMatchesInliers<30)
+    if(mnMatchesInliers < 30)
         return false;
     else
         return true;
@@ -1665,10 +1679,10 @@ void Tracking::UpdateLocalKeyFrames()
         if(pKF->isBad())
             continue;
 
-        if(it->second>max)
+        if(it->second > max)
         {
-            max=it->second;
-            pKFmax=pKF;
+            max = it->second;
+            pKFmax = pKF;
         }
 
         mvpLocalKeyFrames.push_back(it->first);

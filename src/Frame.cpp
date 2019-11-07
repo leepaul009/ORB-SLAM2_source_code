@@ -391,10 +391,12 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
  * @param maxLevel 最大尺度
  * @return         满足条件的特征点的序号
  */
-vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel, const int maxLevel) const
+vector<size_t> Frame::GetFeaturesInArea(const float &x, const float &y,
+                                        const float &r,
+                                        const int minLevel, const int maxLevel) const
 {
     vector<size_t> vIndices;
-    vIndices.reserve(N);
+    vIndices.reserve(N); // number of key points
 
     const int nMinCellX = max(0,(int)floor((x-mnMinX-r)*mfGridElementWidthInv));
     if(nMinCellX>=FRAME_GRID_COLS)
@@ -414,23 +416,25 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
 
     const bool bCheckLevels = (minLevel>0) || (maxLevel>=0);
 
+    // for each cell
     for(int ix = nMinCellX; ix<=nMaxCellX; ix++)
     {
         for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
         {
-            const vector<size_t> vCell = mGrid[ix][iy];
+            const vector<size_t> vCell = mGrid[ix][iy]; // 每个格子分配的特征点的"index list"
             if(vCell.empty())
                 continue;
 
             for(size_t j=0, jend=vCell.size(); j<jend; j++)
             {
+                // 每个格子分配的特征点
                 const cv::KeyPoint &kpUn = mvKeysUn[vCell[j]];
                 if(bCheckLevels)
                 {
-                    if(kpUn.octave<minLevel)
+                    if(kpUn.octave < minLevel)
                         continue;
-                    if(maxLevel>=0)
-                        if(kpUn.octave>maxLevel)
+                    if(maxLevel >= 0)
+                        if(kpUn.octave > maxLevel)
                             continue;
                 }
 
@@ -438,7 +442,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
                 const float disty = kpUn.pt.y-y;
 
                 if(fabs(distx)<r && fabs(disty)<r)
-                    vIndices.push_back(vCell[j]);
+                    vIndices.push_back(vCell[j]); // insert index
             }
         }
     }

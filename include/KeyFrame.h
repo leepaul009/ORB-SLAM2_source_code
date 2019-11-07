@@ -154,7 +154,7 @@ public:
 
     // Variables used by the keyframe database
     long unsigned int mnLoopQuery;
-    int mnLoopWords;
+    int mnLoopWords; // number of shared words with cur KF [闭环检测]
     float mLoopScore;
     long unsigned int mnRelocQuery; // current input frame id that indicate if chosen as a candidate
     int mnRelocWords;

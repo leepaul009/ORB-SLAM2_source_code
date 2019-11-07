@@ -89,8 +89,13 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
             r*=th;
 
         // 通过投影点(投影到当前帧,见isInFrustum())以及搜索窗口和预测的尺度进行搜索, 找出附近的兴趣点
+        // limit: key points inside box with center pt(x,y) and ridus(r) and level range(l-1,l)
         const vector<size_t> vIndices =
-                F.GetFeaturesInArea(pMP->mTrackProjX,pMP->mTrackProjY,r*F.mvScaleFactors[nPredictedLevel],nPredictedLevel-1,nPredictedLevel);
+                F.GetFeaturesInArea(pMP->mTrackProjX,  // center pt x
+                                    pMP->mTrackProjY,  // center pt y
+                                    r*F.mvScaleFactors[nPredictedLevel], // ridus
+                                    nPredictedLevel-1, // limit min
+                                    nPredictedLevel);  // limit max
 
         if(vIndices.empty())
             continue;
@@ -110,7 +115,7 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
 
             // 如果Frame中的该兴趣点已经有对应的MapPoint了,则退出该次循环
             if(F.mvpMapPoints[idx])
-                if(F.mvpMapPoints[idx]->Observations()>0)
+                if(F.mvpMapPoints[idx]->Observations() > 0)
                     continue;
 
             if(F.mvuRight[idx]>0)
@@ -149,6 +154,7 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
             F.mvpMapPoints[bestIdx]=pMP; // 为Frame中的兴趣点增加对应的MapPoint
             nmatches++;
         }
+        // go to next map point
     }
 
     return nmatches;

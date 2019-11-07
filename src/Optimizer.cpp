@@ -339,14 +339,14 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     {
     unique_lock<mutex> lock(MapPoint::mGlobalMutex);
 
-    for(int i=0; i<N; i++)
+    for(int i=0; i<N; i++) // for each KeyPoint
     {
         MapPoint* pMP = pFrame->mvpMapPoints[i];
         if(pMP)
         {
             // Monocular observation
             // 单目情况, 也有可能在双目下, 当前帧的左兴趣点找不到匹配的右兴趣点
-            if(pFrame->mvuRight[i]<0)
+            if(pFrame->mvuRight[i] < 0)
             {
                 nInitialCorrespondences++;
                 pFrame->mvbOutlier[i] = false;
@@ -419,7 +419,6 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                 vnIndexEdgeStereo.push_back(i);
             }
         }
-
     }
     }
 
