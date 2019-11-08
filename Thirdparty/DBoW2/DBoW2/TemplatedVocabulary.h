@@ -1150,7 +1150,9 @@ void TemplatedVocabulary<TDescriptor,F>::transform(
 template<class TDescriptor, class F> 
 void TemplatedVocabulary<TDescriptor,F>::transform(
   const std::vector<TDescriptor>& features,
-  BowVector &v, FeatureVector &fv, int levelsup) const
+  BowVector &v,
+  FeatureVector &fv,
+  int levelsup) const
 {
   v.clear();
   fv.clear();
@@ -1180,7 +1182,7 @@ void TemplatedVocabulary<TDescriptor,F>::transform(
       
       if(w > 0) // not stopped
       { 
-        v.addWeight(id, w);
+        v.addWeight(id, w); // word id & weight
         fv.addFeature(nid, i_feature);
       }
     }

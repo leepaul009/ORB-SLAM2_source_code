@@ -106,20 +106,20 @@ protected:
 
     // Tracking线程向LocalMapping中插入关键帧是先插入到该队列中
     std::list<KeyFrame*> mlNewKeyFrames; ///< 等待处理的关键帧列表
+    std::mutex mMutexNewKFs; // mutex for mlNewKeyFrames
 
     KeyFrame* mpCurrentKeyFrame;
 
     std::list<MapPoint*> mlpRecentAddedMapPoints;
 
-    std::mutex mMutexNewKFs;
-
-    bool mbAbortBA;
+    bool mbAbortBA; // related to KF insert from Tracking
 
     bool mbStopped;
     bool mbStopRequested;
     bool mbNotStop;
     std::mutex mMutexStop;
 
+    // used for communication with Tracking
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
 };

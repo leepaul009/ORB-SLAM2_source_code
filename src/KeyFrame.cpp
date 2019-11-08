@@ -66,10 +66,11 @@ void KeyFrame::ComputeBoW()
 {
     if(mBowVec.empty() || mFeatVec.empty())
     {
+        // copy each row of mDescriptors as each element of vector vCurrentDesc
         vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
         // Feature vector associate features with nodes in the 4th level (from leaves up)
         // We assume the vocabulary tree has 6 levels, change the 4 otherwise
-        mpORBvocabulary->transform(vCurrentDesc,mBowVec,mFeatVec,4);
+        mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec,4);
     }
 }
 
@@ -162,11 +163,11 @@ void KeyFrame::UpdateBestCovisibles()
 {
     unique_lock<mutex> lock(mMutexConnections);
     // http://stackoverflow.com/questions/3389648/difference-between-stdliststdpair-and-stdmap-in-c-stl
-    vector<pair<int,KeyFrame*> > vPairs;
+    vector<pair<int, KeyFrame*> > vPairs;
     vPairs.reserve(mConnectedKeyFrameWeights.size());
     // 取出所有连接的关键帧，mConnectedKeyFrameWeights的类型为std::map<KeyFrame*,int>，而vPairs变量将共视的3D点数放在前面，利于排序
     for(map<KeyFrame*,int>::iterator mit=mConnectedKeyFrameWeights.begin(), mend=mConnectedKeyFrameWeights.end(); mit!=mend; mit++)
-       vPairs.push_back(make_pair(mit->second,mit->first));
+       vPairs.push_back(make_pair(mit->second, mit->first));
 
     // 按照权重进行排序
     sort(vPairs.begin(),vPairs.end());
@@ -443,11 +444,11 @@ void KeyFrame::UpdateConnections()
     // 如果没有超过阈值的权重，则对权重最大的关键帧建立连接
     if(vPairs.empty())
     {
-	    // 如果每个关键帧与它共视的关键帧的个数都少于th，
+        // 如果每个关键帧与它共视的关键帧的个数都少于th，
         // 那就只更新与其它关键帧共视程度最高的关键帧的mConnectedKeyFrameWeights
         // 这是对之前th这个阈值可能过高的一个补丁
-        vPairs.push_back(make_pair(nmax,pKFmax));
-        pKFmax->AddConnection(this,nmax);
+        vPairs.push_back(make_pair(nmax, pKFmax));
+        pKFmax->AddConnection(this, nmax); // update pKFmax's mConnectedKeyFrameWeights
     }
 
     // vPairs里存的都是相互共视程度比较高的关键帧和共视权重，由大到小
@@ -461,6 +462,7 @@ void KeyFrame::UpdateConnections()
     }
 
     //===============3==================================
+    // update this KF with covisibility graph
     {
         unique_lock<mutex> lockCon(mMutexConnections);
 

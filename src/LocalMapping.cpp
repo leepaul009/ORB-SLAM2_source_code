@@ -29,7 +29,9 @@ namespace ORB_SLAM2
 {
 
 LocalMapping::LocalMapping(Map *pMap, const float bMonocular):
-    mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
+    mbMonocular(bMonocular),
+    mbResetRequested(false), mbFinishRequested(false), mbFinished(true),
+    mpMap(pMap),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true)
 {
 }
@@ -197,8 +199,8 @@ void LocalMapping::ProcessNewKeyFrame()
             if(!pMP->isBad())
             {
                 // 非当前帧生成的MapPoints
-				// 为当前帧在tracking过程跟踪到的MapPoints更新属性
-                if(!pMP->IsInKeyFrame(mpCurrentKeyFrame))
+                // 为当前帧在tracking过程跟踪到的MapPoints更新属性
+                if(!pMP->IsInKeyFrame(mpCurrentKeyFrame)) // KF doesn't observe this pMP
                 {
                     // 添加观测
                     pMP->AddObservation(mpCurrentKeyFrame, i);

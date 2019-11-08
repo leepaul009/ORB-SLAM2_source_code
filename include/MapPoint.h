@@ -130,7 +130,7 @@ protected:
     cv::Mat mWorldPos; ///< MapPoint在世界坐标系下的坐标
 
     // Keyframes observing the point and associated index in keyframe
-    std::map<KeyFrame*,size_t> mObservations; ///< 观测到该MapPoint的KF和该MapPoint在KF中的索引
+    std::map<KeyFrame*,size_t> mObservations; ///< {观测到该MapPoint的KF}和{该MapPoint在KF中的索引}
 
     // Mean viewing direction
     // 该MapPoint平均观测方向
@@ -142,7 +142,7 @@ protected:
     // MapPoint只与一帧的图像特征点对应（由frame来构造时），那么这个特征点的描述子就是该3D点的描述子
     cv::Mat mDescriptor; ///< 通过 ComputeDistinctiveDescriptors() 得到的最优描述子
 
-    // Reference KeyFrame
+    // Reference KeyFrame 参考关键帧?
     KeyFrame* mpRefKF;
 
     // Tracking counters

@@ -177,17 +177,18 @@ public:
     const std::vector<cv::KeyPoint> mvKeysUn;
     const std::vector<float> mvuRight; // negative value for monocular points
     const std::vector<float> mvDepth; // negative value for monocular points
+    // mDescriptors: each row indicates one descriptor, which corresponds to a map point
     const cv::Mat mDescriptors;
 
     //BoW
-    DBoW2::BowVector mBowVec; ///< Vector of words to represent images
-    DBoW2::FeatureVector mFeatVec; ///< Vector of nodes with indexes of local features
+    DBoW2::BowVector mBowVec; ///< Vector of words to represent images <WordId, WordValue>
+    DBoW2::FeatureVector mFeatVec; ///< Vector of nodes with indexes of local features <NodeId, std::vector<unsigned int> >
 
     // Pose relative to parent (this is computed when bad flag is activated)
     cv::Mat mTcp;
 
     // Scale
-    const int mnScaleLevels;
+    const int mnScaleLevels; // 金字塔层数?
     const float mfScaleFactor;
     const float mfLogScaleFactor;
     const std::vector<float> mvScaleFactors;// 尺度因子，scale^n，scale=1.2，n为层数
@@ -213,6 +214,7 @@ protected:
     cv::Mat Cw; // Stereo middel point. Only for visualization
 
     // MapPoints associated to keypoints
+    // MapPoints ?
     std::vector<MapPoint*> mvpMapPoints;
 
     // BoW
@@ -223,14 +225,15 @@ protected:
     std::vector< std::vector <std::vector<size_t> > > mGrid;
 
     // Covisibility Graph
-    std::map<KeyFrame*,int> mConnectedKeyFrameWeights; ///< 与该关键帧连接的关键帧与权重
-    std::vector<KeyFrame*> mvpOrderedConnectedKeyFrames; ///< 排序后的关键帧
-    std::vector<int> mvOrderedWeights; ///< 排序后的权重(从大到小)
+    ///< 与该关键帧连接的关键帧与权重, weight: number of covisible map point
+    std::map<KeyFrame*,int> mConnectedKeyFrameWeights; // un-sorted
+    std::vector<KeyFrame*>  mvpOrderedConnectedKeyFrames; ///< 排序后的关键帧(same order to W)
+    std::vector<int>        mvOrderedWeights;             ///< 排序后的权重(从大到小)
 
     // Spanning Tree and Loop Edges
     // std::set是集合，相比vector，进行插入数据这样的操作时会自动排序
-    bool mbFirstConnection;
-    KeyFrame* mpParent;
+    bool mbFirstConnection; // init true util UpdateConnections() update covisibility
+    KeyFrame* mpParent; // 该KF的父关KF: 共视程度最高的KF(inside covisibility graph)
     std::set<KeyFrame*> mspChildrens;
     std::set<KeyFrame*> mspLoopEdges;
 

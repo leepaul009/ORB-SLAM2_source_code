@@ -112,9 +112,8 @@ protected:
 
     LocalMapping *mpLocalMapper;
 
-    std::list<KeyFrame*> mlpLoopKeyFrameQueue;
-
-    std::mutex mMutexLoopQueue;
+    std::list<KeyFrame*> mlpLoopKeyFrameQueue; // 闭环检测队列
+    std::mutex mMutexLoopQueue;                // 闭环检测队列mutex
 
     // Loop detector parameters
     float mnCovisibilityConsistencyTh;

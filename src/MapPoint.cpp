@@ -129,7 +129,7 @@ void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
     unique_lock<mutex> lock(mMutexFeatures);
     if(mObservations.count(pKF))
         return;
-    // 记录下能观测到该MapPoint的KF和该MapPoint在KF中的索引
+    // 记录下{能观测到该MapPoint的KF}和{该MapPoint在KF中的索引}
     mObservations[pKF]=idx;
 
     if(pKF->mvuRight[idx]>=0)
@@ -422,8 +422,8 @@ void MapPoint::UpdateNormalAndDepth()
         if(mbBad)
             return;
 
-        observations=mObservations; // 获得观测到该3d点的所有关键帧
-        pRefKF=mpRefKF;             // 观测到该点的参考关键帧
+        observations = mObservations; // 获得观测到该3d点的所有关键帧
+        pRefKF = mpRefKF;             // 观测到该点的参考关键帧
         Pos = mWorldPos.clone();    // 3d点在世界坐标系中的位置
     }
 
