@@ -419,16 +419,16 @@ protected:
   
 protected:
 
-  /// Branching factor
+  /// Branching factor, ref=10
   int m_k;
   
-  /// Depth levels 
+  /// Depth levels, ref=6
   int m_L;
   
-  /// Weighting method
+  /// Weighting method, ref=TF_IDF
   WeightingType m_weighting;
   
-  /// Scoring method
+  /// Scoring method, ref=L1_NORM
   ScoringType m_scoring;
   
   /// Object for computing scores
@@ -1170,50 +1170,50 @@ void TemplatedVocabulary<TDescriptor,F>::transform(
   
   if(m_weighting == TF || m_weighting == TF_IDF)
   {
-    unsigned int i_feature = 0;
-    for(fit = features.begin(); fit < features.end(); ++fit, ++i_feature)
-    {
-      WordId id;
-      NodeId nid;
-      WordValue w; 
-      // w is the idf value if TF_IDF, 1 if TF
-      
-      transform(*fit, id, w, &nid, levelsup);
-      
-      if(w > 0) // not stopped
-      { 
-        v.addWeight(id, w); // word id & weight
-        fv.addFeature(nid, i_feature);
+      unsigned int i_feature = 0;
+      for(fit = features.begin(); fit < features.end(); ++fit, ++i_feature)
+      {
+          WordId id;
+          NodeId nid;
+          WordValue w;
+          // w is the idf value if TF_IDF, 1 if TF
+
+          transform(*fit, id, w, &nid, levelsup);
+
+          if(w > 0) // not stopped
+          {
+              v.addWeight(id, w); // match word: <word id, word weight>
+              fv.addFeature(nid, i_feature); // match node at (maxLevel-levelsup): <node id, desc idx>
+          }
       }
-    }
-    
-    if(!v.empty() && !must)
-    {
-      // unnecessary when normalizing
-      const double nd = v.size();
-      for(BowVector::iterator vit = v.begin(); vit != v.end(); vit++) 
-        vit->second /= nd;
-    }
+
+      if(!v.empty() && !must)
+      {
+          // unnecessary when normalizing
+          const double nd = v.size();
+          for(BowVector::iterator vit = v.begin(); vit != v.end(); vit++)
+              vit->second /= nd;
+      }
   
   }
   else // IDF || BINARY
   {
-    unsigned int i_feature = 0;
-    for(fit = features.begin(); fit < features.end(); ++fit, ++i_feature)
-    {
-      WordId id;
-      NodeId nid;
-      WordValue w;
-      // w is idf if IDF, or 1 if BINARY
-      
-      transform(*fit, id, w, &nid, levelsup);
-      
-      if(w > 0) // not stopped
+      unsigned int i_feature = 0;
+      for(fit = features.begin(); fit < features.end(); ++fit, ++i_feature)
       {
-        v.addIfNotExist(id, w);
-        fv.addFeature(nid, i_feature);
+          WordId id;
+          NodeId nid;
+          WordValue w;
+          // w is idf if IDF, or 1 if BINARY
+
+          transform(*fit, id, w, &nid, levelsup);
+
+          if(w > 0) // not stopped
+          {
+              v.addIfNotExist(id, w);
+              fv.addFeature(nid, i_feature);
+          }
       }
-    }
   } // if m_weighting == ...
   
   if(must) v.normalize(norm);
@@ -1241,8 +1241,12 @@ void TemplatedVocabulary<TDescriptor,F>::transform
 // --------------------------------------------------------------------------
 
 template<class TDescriptor, class F>
-void TemplatedVocabulary<TDescriptor,F>::transform(const TDescriptor &feature, 
-  WordId &word_id, WordValue &weight, NodeId *nid, int levelsup) const
+void TemplatedVocabulary<TDescriptor,F>::transform(
+    const TDescriptor &feature,
+    WordId &word_id,
+    WordValue &weight,
+    NodeId *nid, // match node at level (m_L - levelsup)
+    int levelsup) const
 { 
   // propagate the feature down the tree
   vector<NodeId> nodes;
@@ -1257,25 +1261,26 @@ void TemplatedVocabulary<TDescriptor,F>::transform(const TDescriptor &feature,
 
   do
   {
-    ++current_level;
-    nodes = m_nodes[final_id].children;
-    final_id = nodes[0];
- 
-    double best_d = F::distance(feature, m_nodes[final_id].descriptor);
+      ++current_level;
+      nodes = m_nodes[final_id].children;
+      final_id = nodes[0];
 
-    for(nit = nodes.begin() + 1; nit != nodes.end(); ++nit)
-    {
-      NodeId id = *nit;
-      double d = F::distance(feature, m_nodes[id].descriptor);
-      if(d < best_d)
+      // compare distance with children nodes
+      double best_d = F::distance(feature, m_nodes[final_id].descriptor);
+
+      for(nit = nodes.begin() + 1; nit != nodes.end(); ++nit)
       {
-        best_d = d;
-        final_id = id;
+          NodeId id = *nit;
+          double d = F::distance(feature, m_nodes[id].descriptor);
+          if(d < best_d)
+          {
+              best_d = d;
+              final_id = id;
+          }
       }
-    }
-    
-    if(nid != NULL && current_level == nid_level)
-      *nid = final_id;
+
+      if(nid != NULL && current_level == nid_level)
+          *nid = final_id;
     
   } while( !m_nodes[final_id].isLeaf() );
 
@@ -1367,7 +1372,7 @@ bool TemplatedVocabulary<TDescriptor,F>::loadFromTextFile(const std::string &fil
     f.open(filename.c_str());
 	
     if(f.eof())
-	return false;
+        return false;
 
     m_words.clear();
     m_nodes.clear();
@@ -1376,11 +1381,11 @@ bool TemplatedVocabulary<TDescriptor,F>::loadFromTextFile(const std::string &fil
     getline(f,s);
     stringstream ss;
     ss << s;
-    ss >> m_k;
-    ss >> m_L;
+    ss >> m_k; // max size of children
+    ss >> m_L; // max level
     int n1, n2;
-    ss >> n1;
-    ss >> n2;
+    ss >> n1; // score type
+    ss >> n2; // weight type
 
     if(m_k<0 || m_k>20 || m_L<1 || m_L>10 || n1<0 || n1>5 || n2<0 || n2>3)
     {
@@ -1392,7 +1397,7 @@ bool TemplatedVocabulary<TDescriptor,F>::loadFromTextFile(const std::string &fil
     m_weighting = (WeightingType)n2;
     createScoringObject();
 
-    // nodes
+    // total number of nodes
     int expected_nodes =
     (int)((pow((double)m_k, (double)m_L + 1) - 1)/(m_k - 1));
     m_nodes.reserve(expected_nodes);
@@ -1401,7 +1406,7 @@ bool TemplatedVocabulary<TDescriptor,F>::loadFromTextFile(const std::string &fil
 
     m_nodes.resize(1);
     m_nodes[0].id = 0;
-    while(!f.eof())
+    while(!f.eof()) // process each node
     {
         string snode;
         getline(f,snode);
@@ -1417,11 +1422,13 @@ bool TemplatedVocabulary<TDescriptor,F>::loadFromTextFile(const std::string &fil
         m_nodes[nid].parent = pid;
         m_nodes[pid].children.push_back(nid);
 
+        // 1. update isLeaf
         int nIsLeaf;
         ssnode >> nIsLeaf;
 
+        // 2. update descriptor
         stringstream ssd;
-        for(int iD=0;iD<F::L;iD++) // F::L
+        for(int iD=0;iD<F::L;iD++) // F::L, ref=32
         {
             string sElement;
             ssnode >> sElement;
@@ -1429,6 +1436,7 @@ bool TemplatedVocabulary<TDescriptor,F>::loadFromTextFile(const std::string &fil
         }
         F::fromString(m_nodes[nid].descriptor, ssd.str());
 
+        // 3. update weight
         ssnode >> m_nodes[nid].weight;
 
         if(nIsLeaf>0)

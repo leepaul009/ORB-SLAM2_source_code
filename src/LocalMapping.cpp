@@ -172,6 +172,9 @@ bool LocalMapping::CheckNewKeyFrames()
  */
 void LocalMapping::ProcessNewKeyFrame()
 {
+    // Following steps has been done in initial process
+    // what about in tracking process ??
+
     // 步骤1：从缓冲队列中取出一帧关键帧
     // Tracking线程向LocalMapping中插入关键帧存在该队列中
     {
@@ -181,7 +184,8 @@ void LocalMapping::ProcessNewKeyFrame()
         mlNewKeyFrames.pop_front();
     }
 
-    // Compute Bags of Words structures
+    // Compute Bags of Words structures (tree)
+    // In Voc tree, finding match word and node(at certain level) to each descriptor
     // 步骤2：计算该关键帧特征点的Bow映射关系
     mpCurrentKeyFrame->ComputeBoW();
 
@@ -191,7 +195,7 @@ void LocalMapping::ProcessNewKeyFrame()
     // 但没有对这些匹配上的MapPoints与当前帧进行关联
     const vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
-    for(size_t i=0; i<vpMapPointMatches.size(); i++)
+    for(size_t i=0; i<vpMapPointMatches.size(); i++) // i=KP_idx
     {
         MapPoint* pMP = vpMapPointMatches[i];
         if(pMP)
@@ -200,9 +204,9 @@ void LocalMapping::ProcessNewKeyFrame()
             {
                 // 非当前帧生成的MapPoints
                 // 为当前帧在tracking过程跟踪到的MapPoints更新属性
-                if(!pMP->IsInKeyFrame(mpCurrentKeyFrame)) // KF doesn't observe this pMP
+                if(!pMP->IsInKeyFrame(mpCurrentKeyFrame)) // can't find KF in pMP's observation
                 {
-                    // 添加观测
+                    // 添加观测 obs<KF, KP_idx>
                     pMP->AddObservation(mpCurrentKeyFrame, i);
                     // 获得该点的平均观测方向和观测距离范围
                     pMP->UpdateNormalAndDepth();
@@ -219,7 +223,7 @@ void LocalMapping::ProcessNewKeyFrame()
                 }
             }
         }
-    }    
+    }
 
     // Update links in the Covisibility Graph
     // 步骤4：更新关键帧间的连接关系，Covisibility图和Essential图(tree)

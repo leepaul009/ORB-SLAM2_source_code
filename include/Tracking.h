@@ -100,8 +100,8 @@ public:
     // 初始化时前两帧相关变量
     std::vector<int> mvIniLastMatches;
     std::vector<int> mvIniMatches;// 跟踪初始化时前两帧之间的匹配
-    std::vector<cv::Point2f> mvbPrevMatched;
-    std::vector<cv::Point3f> mvIniP3D;
+    std::vector<cv::Point2f> mvbPrevMatched; // KPs of first frame when inited
+    std::vector<cv::Point3f> mvIniP3D; // index: KP index of init frame, val: 3D Pt in world coordinate
     Frame mInitialFrame;
 
     // Lists used to recover the full camera trajectory at the end of the execution.

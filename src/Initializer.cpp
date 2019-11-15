@@ -42,7 +42,7 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 {
     mK = ReferenceFrame.mK.clone();
 
-    mvKeys1 = ReferenceFrame.mvKeysUn;
+    mvKeys1 = ReferenceFrame.mvKeysUn; // init frame
 
     mSigma = sigma;
     mSigma2 = sigma*sigma;
@@ -80,7 +80,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
             mvbMatched1[i]=false;
     }
 
-    // 匹配上的特征点的个数
+    // 匹配上的特征点的个数, N <= mvKeys2.size()
     const int N = mvMatches12.size();
 
     // Indices for minimum set selection
@@ -889,7 +889,7 @@ bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv:
                             mvMatches12,vbMatchesInliers,K,vP3Di,
                             4.0*mSigma2, vbTriangulatedi, parallaxi);
 
-        // 保留最优的和次优的
+        // 保留最优的和次优的, nGood: number of KP that works in re-prejection with given R/t
         if(nGood>bestGood)
         {
             secondBestGood = bestGood;
@@ -955,8 +955,9 @@ bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv:
  */
 void Initializer::Triangulate(const cv::KeyPoint &kp1,
                               const cv::KeyPoint &kp2,
-                              const cv::Mat &P1,
-                              const cv::Mat &P2, cv::Mat &x3D)
+                              const cv::Mat &P1, // proj:3D pt->2D pt
+                              const cv::Mat &P2,
+                              cv::Mat &x3D)
 {
     // 在DecomposeE函数和ReconstructH函数中对t有归一化
     // 这里三角化过程中恢复的3D点深度取决于 t 的尺度，
@@ -1046,9 +1047,13 @@ void Initializer::Normalize(const vector<cv::KeyPoint> &vKeys,
  */
 int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t,
                          const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
-                         const vector<Match> &vMatches12, vector<bool> &vbMatchesInliers,
-                         const cv::Mat &K, vector<cv::Point3f> &vP3D,
-                         float th2, vector<bool> &vbGood, float &parallax)
+                         const vector<Match> &vMatches12,
+                         vector<bool> &vbMatchesInliers,
+                         const cv::Mat &K,
+                         vector<cv::Point3f> &vP3D, //idx:Key1 val:3d point in F1(init F)
+                         float th2,
+                         vector<bool> &vbGood, //idx:Key1 val:re-projection pass
+                         float &parallax)
 {
     // Calibration parameters
     const float fx = K.at<float>(0,0);
@@ -1156,10 +1161,12 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t,
 
         // 步骤7：统计经过检验的3D点个数，记录3D点视差角
         vCosParallax.push_back(cosParallax);
-        vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
+        vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),
+                                                p3dC1.at<float>(1),
+                                                p3dC1.at<float>(2));
         nGood++;
 
-        if(cosParallax<0.99998)
+        if(cosParallax<0.99998) // ? cos(theta) ~= 0
             vbGood[vMatches12[i].first]=true;
     }
 

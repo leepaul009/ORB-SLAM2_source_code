@@ -369,7 +369,6 @@ void Tracking::Track()
         {
             // Local Mapping is activated. This is the normal behaviour, unless
             // you explicitly activate the "only tracking" mode.
-
             // 正常初始化成功
             if(mState==OK)
             {
@@ -779,8 +778,9 @@ void Tracking::MonocularInitialization()
         // mvIniMatches存储mInitialFrame,mCurrentFrame之间匹配的特征点
         ORBmatcher matcher(0.9,true);
         int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame,
-                                                       mvbPrevMatched, mvIniMatches, 100);
-
+                                                       mvbPrevMatched,
+                                                       mvIniMatches, // match init->cur
+                                                       100);
         // Check if there are enough correspondences
         // 步骤4：如果初始化的两帧之间的匹配点太少，重新初始化
         if(nmatches<100)
@@ -850,7 +850,7 @@ void Tracking::CreateInitialMapMonocular()
 
     // Create MapPoints and asscoiate to keyframes
     // 步骤4：将3D点包装成MapPoints
-    for(size_t i=0; i<mvIniMatches.size();i++)
+    for(size_t i=0; i<mvIniMatches.size();i++) // match12
     {
         if(mvIniMatches[i]<0)
             continue;
@@ -906,7 +906,7 @@ void Tracking::CreateInitialMapMonocular()
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     float invMedianDepth = 1.0f/medianDepth;
 
-    if(medianDepth<0 || pKFcur->TrackedMapPoints(1)<100)
+    if(medianDepth<0 || pKFcur->TrackedMapPoints(1)<100) // good MapPoint less than 100 => bad case
     {
         cout << "Wrong initialization, reseting..." << endl;
         Reset();
@@ -1001,6 +1001,7 @@ bool Tracking::TrackReferenceKeyFrame()
 
     // 步骤2：通过特征点的BoW加快当前帧与参考帧之间的特征点匹配
     // 特征点的匹配关系由MapPoints进行维护
+    // mpReferenceKF: the cur Key Frame of prev step, vpMapPointMatches:<F_KP_id, refKF_MP>
     int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
 
     if(nmatches<15)
@@ -1049,8 +1050,9 @@ void Tracking::UpdateLastFrame()
     // Update pose according to reference keyframe
     // 步骤1：更新最近一帧的位姿
     KeyFrame* pRef = mLastFrame.mpReferenceKF;
-    cv::Mat Tlr = mlRelativeFramePoses.back();
+    cv::Mat Tlr = mlRelativeFramePoses.back(); // rel pose from last cur F to last ref KF
 
+    // why update pose of last frame
     mLastFrame.SetPose(Tlr*pRef->GetPose()); // Tlr*Trw = Tlw 1:last r:reference w:world
 
     // 如果上一帧为关键帧，或者单目的情况，则退出
@@ -1163,7 +1165,9 @@ bool Tracking::TrackWithMotionModel()
 
     // 步骤2：根据匀速度模型进行对上一帧的MapPoints进行跟踪
     // 根据上一帧特征点对应的3D点投影的位置缩小特征点匹配范围
-    int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
+    int nmatches = matcher.SearchByProjection(mCurrentFrame,
+                                              mLastFrame,
+                                              th,mSensor==System::MONOCULAR);
 
     // If few matches, uses a wider window search
     // 如果跟踪的点少，则扩大搜索半径再来一次
@@ -1303,12 +1307,12 @@ bool Tracking::NeedNewKeyFrame()
     // mMaxFrames等于图像输入的帧率
     // 如果关键帧比较少，则考虑插入关键帧
     // 或距离上一次重定位超过1s，则考虑插入关键帧
-    if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && nKFs>mMaxFrames)
+    if(mCurrentFrame.mnId < mnLastRelocFrameId+mMaxFrames && nKFs > mMaxFrames)
         return false;
 
     // Tracked MapPoints in the reference keyframe
     // 步骤3：得到参考关键帧跟踪到的MapPoints数量
-	// 在UpdateLocalKeyFrames函数中会将与当前关键帧共视程度最高的关键帧设定为当前帧的参考关键帧
+    // 在UpdateLocalKeyFrames函数中会将与当前关键帧共视程度最高的关键帧设定为当前帧的参考关键帧
     int nMinObs = 3;
     if(nKFs<=2)
         nMinObs=2;
@@ -1363,10 +1367,10 @@ bool Tracking::NeedNewKeyFrame()
 
     // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
     // 很长时间没有插入关键帧
-    const bool c1a = mCurrentFrame.mnId>=mnLastKeyFrameId+mMaxFrames;
+    const bool c1a = mCurrentFrame.mnId >= mnLastKeyFrameId + mMaxFrames;
     // Condition 1b: More than "MinFrames" have passed and Local Mapping is idle
     // localMapper处于空闲状态
-    const bool c1b = (mCurrentFrame.mnId>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
+    const bool c1b = (mCurrentFrame.mnId >= mnLastKeyFrameId + mMinFrames && bLocalMappingIdle);
     // Condition 1c: tracking is weak
     // 跟踪要跪的节奏，0.25和0.3是一个比较低的阈值
     const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || ratioMap<0.3f) ;

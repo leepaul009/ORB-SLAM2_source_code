@@ -70,7 +70,8 @@ void KeyFrame::ComputeBoW()
         vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
         // Feature vector associate features with nodes in the 4th level (from leaves up)
         // We assume the vocabulary tree has 6 levels, change the 4 otherwise
-        mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec,4);
+        // for each desc, find match word(wid, weight) and node(nid, desc_id) at certain level.
+        mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
     }
 }
 
@@ -319,7 +320,7 @@ int KeyFrame::TrackedMapPoints(const int &minObs)
 
     int nPoints=0;
     const bool bCheckObs = minObs>0;
-    for(int i=0; i<N; i++)
+    for(int i=0; i<N; i++) // for each key point
     {
         MapPoint* pMP = mvpMapPoints[i];
         if(pMP)

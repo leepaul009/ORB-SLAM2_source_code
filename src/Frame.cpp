@@ -250,7 +250,7 @@ Frame::Frame(const cv::Mat &imGray,
 
     mb = mbf/fx;
 
-    AssignFeaturesToGrid();
+    AssignFeaturesToGrid(); // assign KPs to each grid
 }
 
 void Frame::AssignFeaturesToGrid()
@@ -425,6 +425,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float &y,
             if(vCell.empty())
                 continue;
 
+            // for each KP within this cell
             for(size_t j=0, jend=vCell.size(); j<jend; j++)
             {
                 // 每个格子分配的特征点
@@ -438,9 +439,11 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float &y,
                             continue;
                 }
 
+                // x/y: input frame, kpUn.pt.x/y: this frame
                 const float distx = kpUn.pt.x-x;
                 const float disty = kpUn.pt.y-y;
 
+                // insert point-index that is key point of this frame
                 if(fabs(distx)<r && fabs(disty)<r)
                     vIndices.push_back(vCell[j]); // insert index
             }
@@ -521,13 +524,13 @@ void Frame::ComputeImageBounds(const cv::Mat &imLeft)
         // 矫正前四个边界点：(0,0) (cols,0) (0,rows) (cols,rows)
         cv::Mat mat(4,2,CV_32F);
         mat.at<float>(0,0)=0.0;         //左上
-		mat.at<float>(0,1)=0.0;
+        mat.at<float>(0,1)=0.0;
         mat.at<float>(1,0)=imLeft.cols; //右上
-		mat.at<float>(1,1)=0.0;
-		mat.at<float>(2,0)=0.0;         //左下
-		mat.at<float>(2,1)=imLeft.rows;
+        mat.at<float>(1,1)=0.0;
+        mat.at<float>(2,0)=0.0;         //左下
+        mat.at<float>(2,1)=imLeft.rows;
         mat.at<float>(3,0)=imLeft.cols; //右下
-		mat.at<float>(3,1)=imLeft.rows;
+        mat.at<float>(3,1)=imLeft.rows;
 
         // Undistort corners
         mat=mat.reshape(2);

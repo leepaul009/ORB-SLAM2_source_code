@@ -213,8 +213,7 @@ protected:
 
     cv::Mat Cw; // Stereo middel point. Only for visualization
 
-    // MapPoints associated to keypoints
-    // MapPoints ?
+    // MapPoints associated to keypoints, idx: KeyPoint id, val: associated MapPoint
     std::vector<MapPoint*> mvpMapPoints;
 
     // BoW
@@ -228,13 +227,13 @@ protected:
     ///< 与该关键帧连接的关键帧与权重, weight: number of covisible map point
     std::map<KeyFrame*,int> mConnectedKeyFrameWeights; // un-sorted
     std::vector<KeyFrame*>  mvpOrderedConnectedKeyFrames; ///< 排序后的关键帧(same order to W)
-    std::vector<int>        mvOrderedWeights;             ///< 排序后的权重(从大到小)
+    std::vector<int>        mvOrderedWeights;             ///< 排序后的权重(从大到小),w=Covisible MapPoint number
 
     // Spanning Tree and Loop Edges
     // std::set是集合，相比vector，进行插入数据这样的操作时会自动排序
     bool mbFirstConnection; // init true util UpdateConnections() update covisibility
     KeyFrame* mpParent; // 该KF的父关KF: 共视程度最高的KF(inside covisibility graph)
-    std::set<KeyFrame*> mspChildrens;
+    std::set<KeyFrame*> mspChildrens; // when this KF firstly run UpdateConnections(), add top-covision KF as parent
     std::set<KeyFrame*> mspLoopEdges;
 
     // Bad flags

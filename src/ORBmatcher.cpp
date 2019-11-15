@@ -169,7 +169,10 @@ float ORBmatcher::RadiusByViewingCos(const float &viewCos)
 }
 
 
-bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoint &kp2,const cv::Mat &F12,const KeyFrame* pKF2)
+bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,
+                                       const cv::KeyPoint &kp2,
+                                       const cv::Mat &F12,
+                                       const KeyFrame* pKF2)
 {
     // Epipolar line in second image l = x1'F12 = [a b c]
     // 求出kp1在pKF2上对应的极线
@@ -208,7 +211,9 @@ bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoin
  * @param  vpMapPointMatches F中MapPoints对应的匹配，NULL表示未匹配
  * @return                   成功匹配的数量
  */
-int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPointMatches)
+int ORBmatcher::SearchByBoW(KeyFrame* pKF, // ref KF
+                            Frame &F,
+                            vector<MapPoint*> &vpMapPointMatches)
 {
     const vector<MapPoint*> vpMapPointsKF = pKF->GetMapPointMatches();
 
@@ -285,9 +290,9 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
                 {
                     // trick!
                     // 最佳匹配比次佳匹配明显要好，那么最佳匹配才真正靠谱
-                    if(static_cast<float>(bestDist1)<mfNNratio*static_cast<float>(bestDist2))
+                    if(static_cast<float>(bestDist1) < mfNNratio*static_cast<float>(bestDist2))
                     {
-                        // 步骤5：更新特征点的MapPoint
+                        // 步骤5：更新特征点的MapPoint, <F_KP_id, matched KF_MP>
                         vpMapPointMatches[bestIdxF]=pMP;
 
                         const cv::KeyPoint &kp = pKF->mvKeysUn[realIdxKF];
@@ -296,7 +301,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
                         {
                             // trick!
                             // angle：每个特征点在提取描述子时的旋转主方向角度，如果图像旋转了，这个角度将发生改变
-                            // 所有的特征点的角度变化应该是一致的，通过直方图统计得到最准确的角度变化值
+                            // 所有的特征点的角度变化应该是一致的，通过直方图统计得到最准确的角度变化值(majority)
                             float rot = kp.angle-F.mvKeys[bestIdxF].angle;// 该特征点的角度变化值
                             if(rot<0.0)
                                 rot+=360.0f;
@@ -332,7 +337,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
         int ind2=-1;
         int ind3=-1;
 
-        // 计算rotHist中最大的三个的index
+        // 计算rotHist中最大的三个的index, find three majority
         ComputeThreeMaxima(rotHist,HISTO_LENGTH,ind1,ind2,ind3);
 
         for(int i=0; i<HISTO_LENGTH; i++)
@@ -494,6 +499,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, // init frame
     vector<int> vMatchedDistance(F2.mvKeysUn.size(),INT_MAX);
     vector<int> vnMatches21(F2.mvKeysUn.size(),-1);
 
+    // for each KP from init frame
     for(size_t i1=0, iend1=F1.mvKeysUn.size(); i1<iend1; i1++)
     {
         cv::KeyPoint kp1 = F1.mvKeysUn[i1];
@@ -503,6 +509,9 @@ int ORBmatcher::SearchForInitialization(Frame &F1, // init frame
 
         // vIndices indicates a collection of KP index match expectation
         // vbPrevMatched: match init Frame => cur Frame
+        // search based on point vbPrevMatched that is KPs from init frame
+        // windowSize used for searching KPs from this frame within distance(radius)
+        // ?? if this frame is very far from init frame, current searching dist insufficient
         vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[i1].x,
                                                         vbPrevMatched[i1].y,
                                                         windowSize,
@@ -510,13 +519,14 @@ int ORBmatcher::SearchForInitialization(Frame &F1, // init frame
         if(vIndices2.empty())
             continue;
 
-        cv::Mat d1 = F1.mDescriptors.row(i1);
+        cv::Mat d1 = F1.mDescriptors.row(i1); // descriptor of this KP
 
         int bestDist = INT_MAX;
         int bestDist2 = INT_MAX;
-        int bestIdx2 = -1;
+        int bestIdx2 = -1; // cur frame KP index closest to KP(init frame)
 
         // find a KP of cur frame that match init frame (shortest dist)
+        // for each KP from current frame
         for(vector<size_t>::iterator vit=vIndices2.begin(); vit!=vIndices2.end(); vit++)
         {
             size_t i2 = *vit;
@@ -525,6 +535,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, // init frame
 
             int dist = DescriptorDistance(d1,d2);
 
+            // already found a KP (of init frame) closer to the KP of cur frame
             if(vMatchedDistance[i2]<=dist)
                 continue;
 
@@ -541,11 +552,12 @@ int ORBmatcher::SearchForInitialization(Frame &F1, // init frame
         }
 
         // 详见SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPointMatches)函数步骤4
-        if(bestDist<=TH_LOW)
+        if(bestDist<=TH_LOW) // TH_LOW=50
         {
-            if(bestDist<(float)bestDist2*mfNNratio)
+            if(bestDist<(float)bestDist2*mfNNratio) //mfNNratio*0.9
             {
-                // indicates vMatchedDistance[i2] worse than bstDist, thus prev match is worse
+                // indicate prev match12/21 is not good as cur one
+                // thus rather than prev match12/21
                 if(vnMatches21[bestIdx2]>=0)
                 {
                     vnMatches12[vnMatches21[bestIdx2]]=-1;
@@ -578,6 +590,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, // init frame
         int ind2=-1;
         int ind3=-1;
 
+        // 3 majority in histgram (indicates 3 most common rot diff and related match)
         ComputeThreeMaxima(rotHist,HISTO_LENGTH,ind1,ind2,ind3);
 
         for(int i=0; i<HISTO_LENGTH; i++)
@@ -588,7 +601,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, // init frame
             for(size_t j=0, jend=rotHist[i].size(); j<jend; j++)
             {
                 int idx1 = rotHist[i][j];
-                if(vnMatches12[idx1]>=0)
+                if(vnMatches12[idx1]>=0) // exist match from init->cur frame
                 {
                     vnMatches12[idx1]=-1;
                     nmatches--;
@@ -769,10 +782,13 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
  * @param bOnlyStereo   在双目和rgbd情况下，要求特征点在右图存在匹配
  * @return              成功匹配的数量
  */
-int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F12,
-                                       vector<pair<size_t, size_t> > &vMatchedPairs, const bool bOnlyStereo)
+int ORBmatcher::SearchForTriangulation(
+    KeyFrame *pKF1, KeyFrame *pKF2,
+    cv::Mat F12,
+    vector<pair<size_t, size_t> > &vMatchedPairs, // pair<kp1_id, kp2_id>
+    const bool bOnlyStereo)
 {
-    const DBoW2::FeatureVector &vFeatVec1 = pKF1->mFeatVec;
+    const DBoW2::FeatureVector &vFeatVec1 = pKF1->mFeatVec; // <nid, kp_id>
     const DBoW2::FeatureVector &vFeatVec2 = pKF2->mFeatVec;
 
     // Compute epipole in second image
@@ -782,7 +798,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
     cv::Mat t2w = pKF2->GetTranslation(); // tc2w
     cv::Mat C2 = R2w*Cw+t2w; // tc2c1 KF1的相机中心在KF2坐标系的表示
     const float invz = 1.0f/C2.at<float>(2);
-    // 步骤0：得到KF1的相机光心在KF2中的坐标（极点坐标）
+    // 步骤0：得到KF1的相机光心在KF2中的坐标（极点坐标）, coordinate on KF2
     const float ex =pKF2->fx*C2.at<float>(0)*invz+pKF2->cx;
     const float ey =pKF2->fy*C2.at<float>(1)*invz+pKF2->cy;
 
@@ -1520,7 +1536,9 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
  * @return              成功匹配的数量
  * @see SearchByBoW()
  */
-int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, const float th, const bool bMono)
+int ORBmatcher::SearchByProjection(Frame &CurrentFrame,
+                                   const Frame &LastFrame,
+                                   const float th, const bool bMono)
 {
     int nmatches = 0;
 

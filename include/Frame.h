@@ -160,15 +160,15 @@ public:
     DBoW2::FeatureVector mFeatVec;
 
     // ORB descriptor, each row associated to a keypoint.
-    // 左目摄像头和右目摄像头特征点对应的描述子
+    // 左目摄像头和右目摄像头特征点对应的描述子, size: [numKPsAllLevels, 32]
     cv::Mat mDescriptors, mDescriptorsRight;
 
     // MapPoints associated to keypoints, NULL pointer if no association.
-    // 每个特征点对应的MapPoint
+    // 每个特征点对应的MapPoint, idx: KP idx of cur Frame
     std::vector<MapPoint*> mvpMapPoints;
 
     // Flag to identify outlier associations.
-    // 观测不到Map中的3D点
+    // 观测不到Map中的3D点, idx: KP idx of cur Frame
     std::vector<bool> mvbOutlier;
 
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints.
